@@ -1,6 +1,5 @@
 import { read as readTorrentFile } from './torrentFile';
-import { readString } from './torrentFile';
-import { readInteger } from './torrentFile';
+import { readString, readInteger, readKeyValuePair } from './torrentFile';
 import { expect } from 'chai';
 
 describe('TorrentFile', () => {
@@ -29,6 +28,19 @@ describe('TorrentFile', () => {
       let result = readInteger(stringBuffer, 0);
 
       expect(result).to.equal(expected);
+    });
+  });
+  describe('read key value pair operation', () => {
+    it('should read raw key value pair buffer', () => {
+      let testString = '7:comment17:Comment goes here';
+      let key = 'comment';
+      let value = 'Comment goes here';
+
+      let stringBuffer = Buffer.from(testString, 'ascii');
+      let result = readKeyValuePair(stringBuffer, 0);
+
+      expect(result[0]).to.equal(key);
+      expect(result[1]).to.equal(value);
     });
   });
 });

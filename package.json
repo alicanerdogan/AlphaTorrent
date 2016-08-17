@@ -5,6 +5,7 @@
   "main": "src/main.js",
   "scripts": {
     "build": "babel src -d lib",
+    "debug": "mocha --debug-brk --compilers js:babel-register --recursive src/**/*spec.js",
     "test": "mocha --compilers js:babel-register --recursive src/**/*spec.js"
   },
   "keywords": [

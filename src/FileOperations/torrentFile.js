@@ -3,12 +3,10 @@ import fs from 'fs';
 
 export function read(torrentPath) {
   let fileBuffer = fs.readFileSync(torrentPath);
-  let type = fileBuffer[0];
-  let index = 0;
-  return readType(fileBuffer, 0);
+  return readItem(fileBuffer, 0);
 }
 
-function readType(buffer, index) {
+function readItem(buffer, index) {
   if (isNumber(buffer[index])) {
     return readString(buffer, index);
   }
@@ -28,8 +26,23 @@ function readType(buffer, index) {
   }
 }
 
-function readDictionary() {
-  // returns map
+export function readDictionary(buffer, index) {
+  if(byteToChar(buffer[index]) !== 'd')
+  {
+    throw new Error('Invalid buffer data: missing prefix \'d\'');
+  }
+
+  let dictionary = {};
+
+  index++;
+  while (byteToChar(buffer[index]) !== 'e') {
+    let keyValuePair = readKeyValuePair(buffer, index);
+    dictionary[keyValuePair[0]] = keyValuePair[1];
+    let size = getSizeOfKeyValuePair(keyValuePair);
+    index += size;
+  }
+
+  return dictionary;
 }
 
 export function readInteger(buffer, index) {
@@ -56,11 +69,14 @@ export function readInteger(buffer, index) {
 }
 
 export function readKeyValuePair(buffer, index) {
-  let key = readType(buffer, index);
+  let key = readItem(buffer, index).toString();
 
   index += key.length + (key.length.toString()).length + 1;
-  let value = readType(buffer, index);
+  let value = readItem(buffer, index);
 
+  if(key !== "pieces" && Buffer.isBuffer(value)) {
+    value = value.toString();
+  }
   return [key, value];
 }
 
@@ -73,18 +89,36 @@ export function readString(buffer, index) {
   }
 
   if (byteToChar(buffer[index]) !== ':') {
-    throw new Error('Invalid buffer data: missing semicolon in string');
+    throw new Error('Invalid buffer data: missing colon in string');
   }
 
   index++;
 
   let length = parseInt(lengthAsString);
 
-  return buffer.slice(index, index + length).toString('ascii');
+  return buffer.slice(index, index + length);
 }
 
-export function readList() {
-  // return array
+export function readList(buffer, index) {
+  if(byteToChar(buffer[index]) !== 'l')
+  {
+    throw new Error('Invalid buffer data: missing prefix \'l\'');
+  }
+
+  let list = [];
+
+  index++;
+  while (byteToChar(buffer[index]) !== 'e') {
+    let item = readItem(buffer, index);
+    if(Buffer.isBuffer(item)) {
+      item = item.toString();
+    }
+    list.push(item);
+    let size = getSizeOf(item);
+    index += size;
+  }
+
+  return list;
 }
 
 function byteToChar(byte) {
@@ -93,4 +127,36 @@ function byteToChar(byte) {
 
 function isNumber(byte) {
   return byte >= 48 && byte <= 57;
+}
+
+function getSizeOfKeyValuePair(keyValuePair) {
+  let key = keyValuePair[0];
+  let value = keyValuePair[1];
+  return getSizeOf(key) + getSizeOf(value);
+}
+
+function getSizeOf(item) {
+  let type = typeof(item);
+  if (type === 'string') {
+    return Buffer.from(item).length + Buffer.from(item).length.toString().length + 1;
+  }
+  else if (type === 'number') {
+    return item.toString().length + 2;
+  }
+  else if (Array.isArray(item)) {
+    let size = 0;
+    item.forEach((arrayItem) => size += getSizeOf(arrayItem));
+    return size + 2;
+  }
+  else if (Buffer.isBuffer(item)) {
+    return item.length + item.length.toString().length + 1;
+  }
+  else if (type === 'object') {
+    let size = 0;
+    Object.keys(item).forEach((key) => size += getSizeOfKeyValuePair([key, item[key]]));
+    return size + 2;
+  }
+  else {
+    throw new Error(`Undefined type: ${type}`)
+  }
 }

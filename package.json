@@ -6,7 +6,8 @@
   "scripts": {
     "build": "babel src -d lib",
     "debug": "mocha --debug-brk --compilers js:babel-register --recursive src/**/*spec.js",
-    "test": "mocha --compilers js:babel-register --recursive src/**/*spec.js"
+    "test": "mocha --compilers js:babel-register --recursive src/**/*spec.js",
+    "node": "babel-node"
   },
   "keywords": [
     "torrent"
@@ -19,6 +20,7 @@
     "babel-preset-es2015": "^6.13.2",
     "babel-register": "^6.11.6",
     "chai": "^3.5.0",
+    "chai-as-promised": "^5.3.0",
     "eslint": "^3.3.0",
     "mocha": "^3.0.2"
   }

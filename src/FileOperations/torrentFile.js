@@ -22,7 +22,7 @@ export function readInfo(torrentPath) {
   return rawInfo;
 }
 
-function readItem(buffer, index) {
+export function readItem(buffer, index = 0) {
   if (isNumber(buffer[index])) {
     return readString(buffer, index);
   }
@@ -90,7 +90,7 @@ export function readKeyValuePair(buffer, index) {
   index += key.length + (key.length.toString()).length + 1;
   let value = readItem(buffer, index);
 
-  if(key !== "pieces" && Buffer.isBuffer(value)) {
+  if(key !== "pieces" && key !=="peers" && Buffer.isBuffer(value)) {
     value = value.toString();
   }
   return [key, value];

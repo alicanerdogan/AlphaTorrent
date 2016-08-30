@@ -6,6 +6,22 @@ export function read(torrentPath) {
   return readItem(fileBuffer, 0);
 }
 
+export function readInfo(torrentPath) {
+  let fileBuffer = fs.readFileSync(torrentPath);
+  let key = '4:info';
+  let keyBuffer = Buffer.from(key, 'utf8');
+  let indexOf = fileBuffer.indexOf(keyBuffer);
+  if (indexOf === -1) {
+    throw new Error('info not found!');
+  }
+  let startIndex = keyBuffer.length + indexOf;
+  let torrent = readItem(fileBuffer, 0);
+  let totalSize = getSizeOf(torrent.info);
+  let rawInfo = new Buffer(totalSize);
+  fileBuffer.copy(rawInfo, 0, startIndex, startIndex + totalSize);
+  return rawInfo;
+}
+
 function readItem(buffer, index) {
   if (isNumber(buffer[index])) {
     return readString(buffer, index);

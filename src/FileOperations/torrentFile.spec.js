@@ -6,7 +6,8 @@ import {
   readInteger,
   readKeyValuePair,
   readList,
-  readDictionary
+  readDictionary,
+  readInfo
 } from './torrentFile';
 import {
   expect
@@ -85,7 +86,14 @@ describe('TorrentFile', () => {
       let torrent = readTorrentFile('./src/FileOperations/test/image.torrent');
     });
     it('should read ubuntu torrent file', () => {
-      let torrent = readTorrentFile('./src/FileOperations/test/ubuntu.torrent');
+      let torrent = readTorrentFile('./src/FileOperations/test/debian.torrent');
+    });
+  });
+  describe('read raw info function', () => {
+    it('should read raw info of image torrent file', () => {
+      let rawInfo = readInfo('./src/FileOperations/test/image.torrent');
+      let info = readDictionary(rawInfo, 0);
+      expect(info.length).to.equal(12014);
     });
   });
 });

@@ -5,6 +5,7 @@ import { read as readTorrentFile } from './../FileOperations/torrentFile';
 import { readInfo, readItem } from './../FileOperations/torrentFile';
 import urlEncodeBuffer from './../Hashing/urlEncodeBuffer';
 import calculateInfoHash from './../Hashing/calculateInfoHash';
+import { decodeHandshake, encodeHandshake } from './Messages/handshake';
 import url from 'url';
 
 import { expect } from 'chai';
@@ -41,7 +42,7 @@ describe('Peer', () => {
     });
     return expect(connectPeer).to.be.fulfilled;
   });
-  it('should handshake to peer', () => {
+  it('should send data to peer', () => {
     const torrentPath = './src/FileOperations/test/ubuntu.torrent';
     const torrent = readTorrentFile(torrentPath);
     const rawInfo = readInfo(torrentPath);
@@ -63,9 +64,14 @@ describe('Peer', () => {
     const parseOperation = announce(tracker, options).then(readItem)
       .then((parsedResponse) => decodePeers(parsedResponse.peers));
     const handshakePeer = parseOperation.then((decodedPeers) => {
+      const message = encodeHandshake(infohash, options.peerId);
       const peerUrl = url.parse('http://' + decodedPeers[0]);
       const peer = new Peer(peerUrl.hostname, peerUrl.port);
-      return peer.connect().then(() => peer.handshake(infohash).then(() => peer.disconnect()));
+      var sendDataTask = peer.connect().then(() => peer.sendData(message));
+      return peer.subscribeData((data) => {
+        const reponse = decodeHandshake(data);
+        return peer.disconnect();
+      })
     });
     return expect(handshakePeer).to.be.fulfilled;
   });

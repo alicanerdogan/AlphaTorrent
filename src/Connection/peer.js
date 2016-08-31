@@ -18,24 +18,26 @@ export default class Peer {
     });
   }
 
-  handshake(infohash) {
+  sendData(data, sentCallback) {
+    if (!Buffer.isBuffer(data)) {
+      throw new Error('message is not buffer');
+    }
+
     return new Promise((resolve, reject) => {
-      let handshakeMessage = new Buffer(68);
-      handshakeMessage[0] = 19;
-
-      const protocolName = Buffer.from('BitTorrent protocol', 'utf8');
-      const id = Buffer.from([48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58]);
-
-      protocolName.copy(handshakeMessage, 1);
-      infohash.copy(handshakeMessage, 28);
-      id.copy(handshakeMessage, 48);
-
-      this.client.write(handshakeMessage);
-
-      this.client.on('data', (response) => {
-        resolve(response);
-      });
+      let onSentCallback = undefined;
+      if (sentCallback) {
+        onSentCallback = () => sentCallback();
+      }
+      this.client.write(data, onSentCallback);
     });
+  }
+
+  subscribeData(dataCallback) {
+    this.client.on('data', dataCallback);
+  }
+
+  unsubscribeData(dataCallback) {
+    this.client.removeListener('data', dataCallback);
   }
 
   disconnect() {
@@ -43,8 +45,9 @@ export default class Peer {
       this.client.on('close', () => {
         resolve();
       });
-
+      this.client.removeAllListeners('data');
       this.client.destroy();
+      this.client = null;
     });
   }
 }

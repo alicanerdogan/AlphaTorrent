@@ -23,13 +23,11 @@ export default class Peer {
       throw new Error('message is not buffer');
     }
 
-    return new Promise((resolve, reject) => {
-      let onSentCallback = undefined;
-      if (sentCallback) {
-        onSentCallback = () => sentCallback();
-      }
-      this.client.write(data, onSentCallback);
-    });
+    let onSentCallback = undefined;
+    if (sentCallback) {
+      onSentCallback = () => sentCallback();
+    }
+    this.client.write(data, onSentCallback);
   }
 
   subscribeData(dataCallback) {
@@ -38,6 +36,14 @@ export default class Peer {
 
   unsubscribeData(dataCallback) {
     this.client.removeListener('data', dataCallback);
+  }
+
+  waitForResponse() {
+    return new Promise((resolve, reject) => {
+      this.client.once('data', (data) => {
+        resolve(data);
+      });
+    });
   }
 
   disconnect() {

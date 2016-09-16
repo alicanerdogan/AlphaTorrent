@@ -1,4 +1,4 @@
-var net = require('net');
+import net from 'net';
 
 export default class Peer {
   constructor(ip, port) {
@@ -48,7 +48,7 @@ export default class Peer {
 
   disconnect() {
     return new Promise((resolve, reject) => {
-      this.client.on('close', () => {
+      this.client.once('close', () => {
         resolve();
       });
       this.client.removeAllListeners('data');

@@ -50,7 +50,7 @@ export default function dispatchMessage(data) {
           bits: []
         };
         for (let i = 5; i < length; i = i + 4) {
-          message.bits.push(data.readUInt32BE(i));
+          message.bits.push(data.readUInt32BE(i).toString(2));
         }
         break;
       case 6:
@@ -66,8 +66,11 @@ export default function dispatchMessage(data) {
           type: 'piece',
           index: data.readUInt32BE(5),
           begin: data.readUInt32BE(9),
-          length: data.readUInt32BE(13)
+          data: new Buffer(length - 9)
         };
+        for (let i = 13; i < length; i++) {
+          message.data[i] = data[i];
+        }
         break;
       case 8:
         message = {

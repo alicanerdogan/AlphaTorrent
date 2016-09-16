@@ -3,11 +3,12 @@ export function decodeHandshake(data) {
     throw new Error('data is not buffer');
   }
 
-  if (data.length !== 68 || data[0] != 19) {
+  if (data[0] != 19) {
     throw new Error('invalid handshake');
   }
 
   return {
+    type: 'handshake',
     protocol: data.toString('ascii', 1, 20),
     flags: data.slice(20, 28),
     infohash: data.slice(28, 48),

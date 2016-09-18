@@ -1,6 +1,5 @@
 import Peer from './peer';
-import announce from './announce';
-import { decodePeers } from './announce';
+import { announce, decodePeers } from './announce';
 import { read as readTorrentFile } from './../FileOperations/torrentFile';
 import { readInfo, readItem } from './../FileOperations/torrentFile';
 import urlEncodeBuffer from './../Hashing/urlEncodeBuffer';

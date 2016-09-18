@@ -1,5 +1,4 @@
-import announce from './announce';
-import { decodePeers } from './announce';
+import { announce, announceFromUDP, decodePeers } from './announce';
 import { read as readTorrentFile } from './../FileOperations/torrentFile';
 import { readInfo, readItem } from './../FileOperations/torrentFile';
 import urlEncodeBuffer from './../Hashing/urlEncodeBuffer';
@@ -11,7 +10,9 @@ import chaiAsPromised from 'chai-as-promised';
 
 chai.use(chaiAsPromised);
 
-describe('Announcing trackers', () => {
+describe('Announcing trackers', function() {
+  this.timeout(5000);
+
   it('should get response from debian tracker', () => {
     const tracker = 'http://bttracker.debian.org:6969/announce';
     const options = {
@@ -86,5 +87,23 @@ describe('Announcing trackers', () => {
     const evaluateOperation = parseOperation.then((parsedResponse) => decodePeers(parsedResponse.peers));
 
     return expect(evaluateOperation).to.be.fulfilled;
+  });
+  it('should get response from udp tracker using torrent file', () => {
+    let torrentPath = './src/FileOperations/test/hp.torrent';
+    let torrent = readTorrentFile(torrentPath);
+    let rawInfo = readInfo(torrentPath);
+    let infohash = calculateInfoHash(rawInfo);
+
+    const tracker = torrent.announce;
+    const options = {
+      infohash: infohash,
+      peerId: '-AZ2200-6wfG2wk6wWLc',
+      port: '56723',
+      uploaded: '0',
+      downloaded: '0',
+      left: '0',
+      event: 'started'
+    }
+    return expect(announceFromUDP(tracker, options)).to.be.fulfilled;
   });
 });

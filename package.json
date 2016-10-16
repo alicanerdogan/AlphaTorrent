@@ -4,11 +4,12 @@
   "description": "a Torrent client",
   "main": "src/main.js",
   "scripts": {
-    "build": "babel src -d lib",
+    "build": "babel src --out-dir lib --ignore *.spec.js",
     "debug": "mocha --debug-brk --compilers js:babel-register --recursive src/**/*spec.js",
     "test": "mocha --compilers js:babel-register --recursive src/**/*spec.js",
-    "node": "babel-node",
-    "start": "babel-node src/main"
+    "node": "babel-node src/main.js",
+    "node-debug": "babel-node --debug --presets es2015 -- src/main.js --debug",
+    "start": "npm run build && node lib/main"
   },
   "keywords": [
     "torrent"

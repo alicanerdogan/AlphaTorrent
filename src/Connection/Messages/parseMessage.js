@@ -47,10 +47,20 @@ export default function dispatchMessage(data) {
       case 5:
         message = {
           type: 'bitfield',
-          bits: []
+          bits: [],
+          hasPiece: (index) => {
+            let section = Math.floor(index / 32);
+            let sectionIndex = 32 - (index % 32);
+            return (((message.bits[section] >> sectionIndex) & 1) === 1)
+          }
         };
-        for (let i = 5; i < length; i = i + 4) {
-          message.bits.push(data.readUInt32BE(i).toString(2));
+        try {
+          for (let i = 5; i < length; i = i + 4) {
+            message.bits.push(data.readUInt32BE(i));
+          }
+        } 
+        catch (error) {
+          message = null;
         }
         break;
       case 6:
@@ -68,9 +78,7 @@ export default function dispatchMessage(data) {
           begin: data.readUInt32BE(9),
           data: new Buffer(length - 9)
         };
-        for (let i = 13; i < length; i++) {
-          message.data[i] = data[i];
-        }
+        data.copy(message.data, 0, 13);
         break;
       case 8:
         message = {

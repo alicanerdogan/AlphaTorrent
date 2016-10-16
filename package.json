@@ -1,5 +1,5 @@
 {
-  "name": "atorrent",
+  "name": "alpha-torrent",
   "version": "0.1.0",
   "description": "a Torrent client",
   "main": "src/main.js",

@@ -32,7 +32,6 @@ export function announce(tracker, options) {
 
     const request = http.request(requestOptions, (response) => {
       let body = null;
-      //console.log(`STATUS: ${response.statusCode}`);
       response.on('data', (chunk) => {
         body = chunk;
       });
@@ -42,7 +41,6 @@ export function announce(tracker, options) {
     });
 
     request.on('error', (e) => {
-      console.log(`problem with request: ${e.message}`);
       reject(e);
     });
 
@@ -88,7 +86,6 @@ export function announceFromUDP(tracker, options) {
       if (error) {
         reject(error)
       };
-      console.log('Connection message sent to ' + trackerUrl.hostname + ':' + trackerUrl.port);
     });
   });
   const announceTask = connectionTask.then((connectionId) => {
@@ -102,7 +99,6 @@ export function announceFromUDP(tracker, options) {
 
     return new Promise((resolve, reject) => {
       client.once('message', (announceResponse) => {
-        console.log(announceResponse);
         if (announceResponse.readUInt32BE(0) !== announceAction) {
           reject('Invalid response action');
         }
@@ -123,7 +119,6 @@ export function announceFromUDP(tracker, options) {
 
       client.send(announceMessage, trackerUrl.port, trackerUrl.hostname, (err) => {
         if (err) throw err;
-        console.log('Announce message sent to ' + trackerUrl.hostname + ':' + trackerUrl.port);
       });
     });
   })

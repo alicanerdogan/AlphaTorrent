@@ -50,7 +50,19 @@ const BLOCK_SIZE = 16384;
 
 console.log('l: ' + torrent.info.pieces.length);
 
-const tracker = torrent.announce;
+let trackers = [];
+trackers.push(torrent.announce);
+if (torrent['announce-list']) {
+  torrent['announce-list'].forEach((announceList) =>  {
+    announceList.forEach((tracker) => {
+      if (trackers.indexOf(tracker) === -1) {
+        trackers.push(tracker);
+      }
+    });
+  });  
+}
+
+const tracker = trackers[0];
 const options = {
   infohash: infohash,
   peerId: '-AZ2200-6wfG2wk6wWLc',

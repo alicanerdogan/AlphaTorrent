@@ -19,7 +19,6 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 process.on('warning', (warning) => {
-  console.warn(warning.name);
   console.warn(warning.message);
   console.warn(warning.stack);
 });
@@ -34,7 +33,7 @@ function getTorrentSize(torrent) {
   else {
     size = torrent.info.length;
   }
-  console.log(`Size: ${(size/(1024.0*1024)).toFixed(2)}mb`);
+  console.log(`Size: ${(size/(1024.0*1024)).toFixed(3)}mb`);
   return size;
 }
 
@@ -90,7 +89,6 @@ pieces.once('completed', () => {
     pieces.writeToFile(torrent.info.name, startIndex, torrentSize);
     console.log('written to ' + torrent.info.name);
   }
-
 });
 const taskAgency = new TaskAgency();
 let remainingSize = torrentSize;

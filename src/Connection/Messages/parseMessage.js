@@ -58,7 +58,7 @@ export default function dispatchMessage(data) {
           for (let i = 5; i < length; i = i + 4) {
             message.bits.push(data.readUInt32BE(i));
           }
-        } 
+        }
         catch (error) {
           message = null;
         }
@@ -72,23 +72,33 @@ export default function dispatchMessage(data) {
         };
         break;
       case 7:
-        message = {
-          type: 'piece',
-          index: data.readUInt32BE(5),
-          begin: data.readUInt32BE(9),
-          data: new Buffer(length - 9)
-        };
-        data.copy(message.data, 0, 13);
+        try {
+          message = {
+            type: 'piece',
+            index: data.readUInt32BE(5),
+            begin: data.readUInt32BE(9),
+            data: new Buffer(length - 9)
+          };
+          data.copy(message.data, 0, 13);
+        }
+        catch (error) {
+          message = null;
+        }
         break;
       case 8:
-        message = {
-          type: 'cancel',
-          index: data.readUInt32BE(5),
-          begin: data.readUInt32BE(9),
-          data: new Buffer(length - 9)
-        };
-        for (let i = 13; i < length; i++) {
-          message.data[i] = data[i];
+        try {
+          message = {
+            type: 'cancel',
+            index: data.readUInt32BE(5),
+            begin: data.readUInt32BE(9),
+            data: new Buffer(length - 9)
+          };
+          for (let i = 13; i < length; i++) {
+            message.data[i] = data[i];
+          }
+        }
+        catch (error) {
+          message = null;
         }
         break;
       case 9:

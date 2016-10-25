@@ -1,5 +1,4 @@
 import { announce, announceFromUDP, decodePeers } from './announce';
-import urlEncodeBuffer from './../Hashing/urlEncodeBuffer';
 import { readItem } from './../FileOperations/torrentFile';
 
 export default function getPeerAddresses(tracker, options) {
@@ -9,7 +8,6 @@ export default function getPeerAddresses(tracker, options) {
     });
   }
   else if(tracker.indexOf('http:') === 0){
-    options.infohash = urlEncodeBuffer(options.infohash);
     return announce(tracker, options).then((announceResponse) => {
       return decodePeers(readItem(announceResponse).peers);
     });

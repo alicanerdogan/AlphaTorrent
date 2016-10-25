@@ -12,7 +12,7 @@ export function announce(tracker, options) {
 
     let path = trackerUrl.pathname;
     path += '?';
-    path += 'info_hash' + '=' + options.infohash + '&';
+    path += 'info_hash' + '=' + options.encodedInfoHash + '&';
     path += 'peer_id' + '=' + options.peerId + '&';
     path += 'port' + '=' + options.port + '&';
     path += 'uploaded' + '=' + options.uploaded + '&';
@@ -66,9 +66,13 @@ export function announceFromUDP(tracker, options) {
   connectMessage.writeUInt32BE(transactionId, 12);
 
   var client = dgram.createSocket('udp4');
-
   const connectionTask = new Promise((resolve, reject) => {
+    const watchdog = setTimeout(() => {
+      client.close();
+      reject();
+    }, 5000);
     client.once('message', (response) => {
+      clearTimeout(watchdog);
       if (response.length !== 16) {
         reject('Invalid response size');
       }
@@ -84,6 +88,7 @@ export function announceFromUDP(tracker, options) {
     });
     client.send(connectMessage, trackerUrl.port, trackerUrl.hostname, (error) => {
       if (error) {
+        clearTimeout(watchdog);
         reject(error)
       };
     });
@@ -93,12 +98,17 @@ export function announceFromUDP(tracker, options) {
     connectionId.copy(announceMessage);
     announceMessage.writeUInt32BE(0x1, 8);
     announceMessage.writeUInt32BE(transactionId, 12);
-    options.infohash.copy(announceMessage, 16);
+    options.infoHash.copy(announceMessage, 16);
     Buffer.from(options.peerId).copy(announceMessage, 36);
     announceMessage.writeInt32BE(-1, 92);
 
     return new Promise((resolve, reject) => {
+      const watchdog = setTimeout(() => {
+        client.close();
+        reject();
+      }, 5000);
       client.once('message', (announceResponse) => {
+        clearTimeout(watchdog);
         if (announceResponse.readUInt32BE(0) !== announceAction) {
           reject('Invalid response action');
         }
@@ -118,10 +128,13 @@ export function announceFromUDP(tracker, options) {
       });
 
       client.send(announceMessage, trackerUrl.port, trackerUrl.hostname, (err) => {
-        if (err) throw err;
+        if (err) {
+          clearTimeout(watchdog);
+          throw err;
+        }
       });
     });
-  })
+  });
   return announceTask;
 }
 

@@ -10,7 +10,7 @@ process.on('warning', (warning) => {
   console.warn(warning.stack);
 });
 
-const torrentPath = './src/FileOperations/test/hp.torrent';
+const torrentPath = './src/FileOperations/test/ubuntu.torrent';
 const torrent = new Torrent(torrentPath);
 const torrentConnection = new TorrentConnection(torrent);
 

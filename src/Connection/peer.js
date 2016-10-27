@@ -10,6 +10,8 @@ export default class Peer extends EventEmitter {
     this.ip = ip;
     this.port = parseInt(port);
     this.isUnchoked = false;
+    this.buffer = Buffer.alloc(0);
+    this.onDataSubscribers = [];
   }
 
   connect() {
@@ -23,7 +25,7 @@ export default class Peer extends EventEmitter {
         port: this.port,
         host: this.ip
       };
-      this.client = net.connect(options, () => {
+      this.client = net.createConnection(options, () => {
         this.subscribeData((data) => {
           const message = parseMessage(data);
           if (message) {
@@ -46,6 +48,9 @@ export default class Peer extends EventEmitter {
       });
       this.client.once('close', (had_error) => {
         reject(`connection closed on ${this.ip}:${this.port}`);
+      });
+      this.client.on('data', (data) => {
+        this.onData(data);
       });
     });
   }
@@ -75,6 +80,33 @@ export default class Peer extends EventEmitter {
     });
   }
 
+  onData(data) {
+    function handleReceivedData(buffer, callbacks) {
+      if (buffer.length < 4) {
+        return buffer;
+      }
+      let messageLength = buffer.readUInt32BE(0) + 4;
+      if (messageLength <= buffer.length) {
+        callbacks.forEach((callback) => callback(buffer.slice(0, messageLength)));
+        return handleReceivedData(Buffer.from(buffer.slice(messageLength)), callbacks);
+      } else {
+        return buffer;
+      }
+    }
+
+    this.buffer = Buffer.from(Buffer.concat([this.buffer, data]));
+
+    if (this.buffer[0] === 19) {
+      if (this.buffer.length >= 68) {
+        this.onDataSubscribers.forEach((dataSubscriber) => dataSubscriber(this.buffer.slice(0, 68)));
+        this.buffer = Buffer.from(this.buffer.slice(68));
+        this.buffer = handleReceivedData(this.buffer, this.onDataSubscribers);
+      }
+    } else {
+      this.buffer = handleReceivedData(this.buffer, this.onDataSubscribers);
+    }
+  }
+
   sendData(data, sentCallback) {
     if (!Buffer.isBuffer(data)) {
       throw new Error('message is not buffer');
@@ -88,11 +120,14 @@ export default class Peer extends EventEmitter {
   }
 
   subscribeData(dataCallback) {
-    this.client.on('data', dataCallback);
+    this.onDataSubscribers.push(dataCallback);
   }
 
   unsubscribeData(dataCallback) {
-    this.client.removeListener('data', dataCallback);
+    const index = this.onDataSubscribers.indexOf(dataCallback);
+    if(index !== -1) {
+      this.onDataSubscribers.splice(index, 1);
+    }
   }
 
   waitForResponse() {

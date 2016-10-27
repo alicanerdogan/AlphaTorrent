@@ -7,7 +7,10 @@ export default class Task extends EventEmitter {
         super();
         this.piece = piece;
         this.index = 0;
-        this.BLOCK_SIZE = 1024;
+        this.BLOCK_SIZE = 16384;
+        if(this.BLOCK_SIZE > this.piece.size) {
+            this.BLOCK_SIZE = this.piece.size;
+        }
     }
 
     assignTo(peer) {
@@ -76,6 +79,7 @@ export default class Task extends EventEmitter {
                         this.peer.unsubscribeData(this.onDataReceivedCallback);
                         this.peer.removeListener('choked', this.onPeerChokedCallback);
                         this.peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+                        this.index = 0;
                         this.emit('suspended');
                     }
                 }

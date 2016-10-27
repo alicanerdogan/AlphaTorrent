@@ -33,7 +33,7 @@ export default class TorrentConnection extends EventEmitter {
     this.options.infoHash = torrent.infoHash;
     this.options.encodedInfoHash = urlEncodeBuffer(torrent.infoHash);
     this.pieces = new Pieces(torrent.size, torrent.pieceSize);
-    this.pieces.once('completed', function () {
+    this.pieces.once('completed', () => {
       this.emit('downloaded');
     });
     this.taskAgency = new TaskAgency();

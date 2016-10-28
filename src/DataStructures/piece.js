@@ -4,11 +4,13 @@ export default class Piece {
   constructor(index, size, hash) {
     this.index = index;
     this.size = size;
-    this.buffer = Buffer.alloc(size);
     this.hash = Buffer.from(hash);
   }
 
   update(startIndex, data) {
+    if(!this.buffer) {
+      this.buffer = Buffer.alloc(this.size);
+    }
     this.buffer.fill(data, startIndex);
   }
 

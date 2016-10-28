@@ -71,7 +71,7 @@ export default class Peer extends EventEmitter {
       let messageLength = buffer.readUInt32BE(0) + 4;
       if (messageLength <= buffer.length) {
         callback(buffer.slice(0, messageLength));
-        return handleReceivedData(Buffer.from(buffer.slice(messageLength)), callback);
+        return handleReceivedData(buffer.slice(messageLength), callback);
       } else {
         return buffer;
       }
@@ -84,13 +84,12 @@ export default class Peer extends EventEmitter {
       }
     };
 
-    this.buffer = Buffer.from(Buffer.concat([this.buffer, data]));
+    this.buffer = Buffer.concat([this.buffer, data]);
 
     if (this.buffer[0] === 19) {
       if (this.buffer.length >= 68) {
         dataCallback(this.buffer.slice(0, 68));
-        this.buffer = Buffer.from(this.buffer.slice(68));
-        this.buffer = handleReceivedData(this.buffer, dataCallback);
+        this.buffer = handleReceivedData(this.buffer.slice(68), dataCallback);
       }
     } else {
       this.buffer = handleReceivedData(this.buffer, dataCallback);

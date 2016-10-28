@@ -19,28 +19,30 @@ export default class Task extends EventEmitter {
     this.onPeerDisconnectedCallback = () => this.onPeerDisconnected();
     this.peer = peer;
 
-    this.peer.once('disconnected', this.onPeerDisconnectedCallback);
-    this.peer.once('choked', this.onPeerChokedCallback);
+    this.peer.on('disconnected', this.onPeerDisconnectedCallback);
+    this.peer.on('choked', this.onPeerChokedCallback);
     this.peer.on('message', this.onDataReceivedCallback);
     this.timeout = setTimeout(() => {
-      peer.removeListener('message', this.onDataReceivedCallback);
-      peer.removeListener('choked', this.onPeerChokedCallback);
-      peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+      this.unsubscribePeerEvents();
       this.emit('terminated');
     }, 5000);
     let request = encodeRequest(this.piece.index, this.index, this.BLOCK_SIZE);
     this.peer.sendData(request);
   }
 
-  onPeerChoked() {
+  unsubscribePeerEvents() {
     this.peer.removeListener('message', this.onDataReceivedCallback);
+    this.peer.removeListener('choked', this.onPeerChokedCallback);
     this.peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+  }
+
+  onPeerChoked() {
+    this.unsubscribePeerEvents();
     this.emit('suspended');
   }
 
   onPeerDisconnected() {
-    this.peer.removeListener('message', this.onDataReceivedCallback);
-    this.peer.removeListener('choked', this.onPeerChokedCallback);
+    this.unsubscribePeerEvents();
     this.emit('terminated');
   }
 
@@ -59,24 +61,18 @@ export default class Task extends EventEmitter {
         const request = encodeRequest(this.piece.index, this.index, blockSize);
         this.peer.sendData(request);
         this.timeout = setTimeout(() => {
-          this.peer.removeListener('message', this.onDataReceivedCallback);
-          this.peer.removeListener('choked', this.onPeerChokedCallback);
-          this.peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+          this.unsubscribePeerEvents();
           this.emit('terminated');
         }, 5000);
       }
       else {
         if (this.piece.isIntact()) {
-          this.peer.removeListener('message', this.onDataReceivedCallback);
-          this.peer.removeListener('choked', this.onPeerChokedCallback);
-          this.peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+          this.unsubscribePeerEvents();
           this.emit('completed');
         }
         else {
           console.log(`Piece #${this.piece.index} is corrupted`);
-          this.peer.removeListener('message', this.onDataReceivedCallback);
-          this.peer.removeListener('choked', this.onPeerChokedCallback);
-          this.peer.removeListener('disconnected', this.onPeerDisconnectedCallback);
+
           this.index = 0;
           this.emit('suspended');
         }

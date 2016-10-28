@@ -11,7 +11,6 @@ export default class Peer extends EventEmitter {
     this.port = parseInt(port);
     this.isUnchoked = false;
     this.buffer = Buffer.alloc(0);
-    this.onDataSubscribers = [];
   }
 
   connect() {
@@ -26,32 +25,17 @@ export default class Peer extends EventEmitter {
         host: this.ip
       };
       this.client = net.createConnection(options, () => {
-        this.subscribeData((data) => {
-          const message = parseMessage(data);
-          if (message) {
-            if (message.type === 'unchoke') {
-              this.isUnchoked = true;
-              console.log(`${this.ip}:${this.port} is unchoked`);
-              this.emit('unchoked');
-            }
-            else if (message.type === 'choke') {
-              this.isUnchoked = false;
-              console.log(`${this.ip}:${this.port} is choked`);
-              this.emit('choked');
-            }
-          }
-        });
+        this.on('message', (message) => this.onMessage(message));
         resolve();
       });
+      this.client.on('data', (data) => this.onData(data));
       this.client.once('error', (error) => {
         reject(`connection error on ${error}@${this.ip}:${this.port}`);
       });
       this.client.once('close', (had_error) => {
         reject(`connection closed on ${this.ip}:${this.port}`);
       });
-      this.client.on('data', (data) => {
-        this.onData(data);
-      });
+
     });
   }
 
@@ -59,9 +43,8 @@ export default class Peer extends EventEmitter {
     return this.connect().then(() => {
       console.log(`connected to ${this.ip}:${this.port}`);
       const handshake = encodeHandshake(infohash, id);
-      const waitForHandshake = this.waitForResponse().then((data) => {
+      const waitForHandshake = this.waitForResponse().then((message) => {
         return new Promise((resolve, reject) => {
-          const message = parseMessage(data);
           if (message.type === 'handshake') {
             console.log(`handshaked with ${this.ip}:${this.port}`);
             const interested = encodeInterested();
@@ -81,29 +64,49 @@ export default class Peer extends EventEmitter {
   }
 
   onData(data) {
-    function handleReceivedData(buffer, callbacks) {
+    function handleReceivedData(buffer, callback) {
       if (buffer.length < 4) {
         return buffer;
       }
       let messageLength = buffer.readUInt32BE(0) + 4;
       if (messageLength <= buffer.length) {
-        callbacks.forEach((callback) => callback(buffer.slice(0, messageLength)));
-        return handleReceivedData(Buffer.from(buffer.slice(messageLength)), callbacks);
+        callback(buffer.slice(0, messageLength));
+        return handleReceivedData(Buffer.from(buffer.slice(messageLength)), callback);
       } else {
         return buffer;
       }
     }
 
+    const dataCallback = (data) => {
+      const receivedMessage = parseMessage(data);
+      if(receivedMessage) {
+        this.emit('message', receivedMessage);
+      }
+    };
+
     this.buffer = Buffer.from(Buffer.concat([this.buffer, data]));
 
     if (this.buffer[0] === 19) {
       if (this.buffer.length >= 68) {
-        this.onDataSubscribers.forEach((dataSubscriber) => dataSubscriber(this.buffer.slice(0, 68)));
+        dataCallback(this.buffer.slice(0, 68));
         this.buffer = Buffer.from(this.buffer.slice(68));
-        this.buffer = handleReceivedData(this.buffer, this.onDataSubscribers);
+        this.buffer = handleReceivedData(this.buffer, dataCallback);
       }
     } else {
-      this.buffer = handleReceivedData(this.buffer, this.onDataSubscribers);
+      this.buffer = handleReceivedData(this.buffer, dataCallback);
+    }
+  }
+
+  onMessage(message) {
+    if (message.type === 'unchoke') {
+      this.isUnchoked = true;
+      console.log(`${this.ip}:${this.port} is unchoked`);
+      this.emit('unchoked');
+    }
+    else if (message.type === 'choke') {
+      this.isUnchoked = false;
+      console.log(`${this.ip}:${this.port} is choked`);
+      this.emit('choked');
     }
   }
 
@@ -119,21 +122,10 @@ export default class Peer extends EventEmitter {
     this.client.write(data, onSentCallback);
   }
 
-  subscribeData(dataCallback) {
-    this.onDataSubscribers.push(dataCallback);
-  }
-
-  unsubscribeData(dataCallback) {
-    const index = this.onDataSubscribers.indexOf(dataCallback);
-    if(index !== -1) {
-      this.onDataSubscribers.splice(index, 1);
-    }
-  }
-
   waitForResponse() {
     return new Promise((resolve, reject) => {
-      this.client.once('data', (data) => {
-        resolve(data);
+      this.once('message', (message) => {
+        resolve(message);
       });
     });
   }

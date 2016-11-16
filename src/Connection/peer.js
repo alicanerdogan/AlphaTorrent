@@ -46,14 +46,11 @@ export default class Peer extends EventEmitter {
       const waitForHandshake = this.waitForResponse().then((message) => {
         return new Promise((resolve, reject) => {
           if (message.type === 'handshake') {
-            console.log(`handshaked with ${this.ip}:${this.port}`);
             const interested = encodeInterested();
             this.sendData(interested);
-            console.log('interest shown');
             resolve();
           }
           else {
-            console.log('handshake is not received');
             reject();
           }
         });
@@ -61,6 +58,10 @@ export default class Peer extends EventEmitter {
       this.sendData(handshake);
       return waitForHandshake;
     });
+  }
+
+  getSignature() {
+    return `${this.ip}:${this.port}`;
   }
 
   onData(data) {
@@ -99,12 +100,10 @@ export default class Peer extends EventEmitter {
   onMessage(message) {
     if (message.type === 'unchoke') {
       this.isUnchoked = true;
-      console.log(`${this.ip}:${this.port} is unchoked`);
       this.emit('unchoked');
     }
     else if (message.type === 'choke') {
       this.isUnchoked = false;
-      console.log(`${this.ip}:${this.port} is choked`);
       this.emit('choked');
     }
   }

@@ -36,13 +36,32 @@ export default class TorrentConnection extends EventEmitter {
     this.pieces.once('completed', () => {
       this.emit('downloaded');
     });
-    this.taskAgency = new TaskAgency();
     const tasks = createTasks(torrent, this.pieces);
     tasks.forEach((task) => {
-      this.taskAgency.enlistTask(task);
       task.once('completed', () => {
         this.pieces.add(task.piece);
       });
+    });
+    this.taskAgency = new TaskAgency(tasks, this.torrent.infoHash, this.options.peerId);
+  }
+
+  getPeersFromTrackers() {
+    let torrent = this.torrent;
+    let options = this.options;
+    let taskAgency = this.taskAgency;
+
+    getPeers(this.torrent.trackers, this.options).then(function (decodedPeers) {
+      const MAX_ACTIVE_PEERS = 300;
+      let maxActivePeers = MAX_ACTIVE_PEERS;
+      if (maxActivePeers > decodedPeers.length) {
+        maxActivePeers = decodedPeers.length;
+      }
+
+      for (let i = 0; i < maxActivePeers; i++) {
+        let peerUrl = url.parse('http://' + decodedPeers[i]);
+        let peer = new Peer(peerUrl.hostname, peerUrl.port);
+        taskAgency.registerPeer(peer);
+      }
     });
   }
 
@@ -50,26 +69,8 @@ export default class TorrentConnection extends EventEmitter {
     if (this.state !== STATES.ACTIVE) {
       this.state = STATES.ACTIVE;
 
-      let torrent = this.torrent;
-      let options = this.options;
-      let taskAgency = this.taskAgency;
-
-      getPeers(this.torrent.trackers, this.options).then(function(decodedPeers) {
-        const MAX_ACTIVE_PEERS = 300;
-        let maxActivePeers = MAX_ACTIVE_PEERS;
-        if (maxActivePeers > decodedPeers.length) {
-          maxActivePeers = decodedPeers.length;
-        }
-
-        for (let i = 0; i < maxActivePeers; i++) {
-          let peerUrl = url.parse('http://' + decodedPeers[i]);
-          let peer = new Peer(peerUrl.hostname, peerUrl.port);
-          peer.connectAndHandshake(torrent.infoHash, options.peerId).then(() => {
-            taskAgency.requestTask(peer);
-          }).catch((error) => {
-          });
-        }
-      });
+      this.refreshPeers = setInterval(() => this.getPeersFromTrackers(), 600000);
+      this.getPeersFromTrackers();      
     }
   }
 

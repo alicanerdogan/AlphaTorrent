@@ -24,7 +24,7 @@ export default class Task extends EventEmitter {
     this.peer.on('message', this.onDataReceivedCallback);
     this.timeout = setTimeout(() => {
       this.unsubscribePeerEvents();
-      this.emit('terminated');
+      this.emit('suspended');
     }, 5000);
     let request = encodeRequest(this.piece.index, this.index, this.BLOCK_SIZE);
     this.peer.sendData(request);
@@ -43,7 +43,7 @@ export default class Task extends EventEmitter {
 
   onPeerDisconnected() {
     this.unsubscribePeerEvents();
-    this.emit('terminated');
+    this.emit('suspended');
   }
 
   onMessageReceived(message) {
@@ -62,7 +62,7 @@ export default class Task extends EventEmitter {
         this.peer.sendData(request);
         this.timeout = setTimeout(() => {
           this.unsubscribePeerEvents();
-          this.emit('terminated');
+          this.emit('suspended');
         }, 5000);
       }
       else {

@@ -14,7 +14,17 @@ export default class Torrent {
     this.pieceSize = this.torrentInfo.info['piece length'];
     this.trackers = getTrackers(this.torrentInfo);
     this.size = getTorrentSize(this.torrentInfo);
+    this.sizeAsString = getSizeAsString(this.size);
+    this.name = this.torrentInfo.info.name;
+    this.files = this.torrentInfo.info.files ? 
+      this.torrentInfo.info.files.map((file) => file.path[0]) : 
+      [this.torrentInfo.info.name];
+    this.hashSignature = createHashSignature(this.infoHash);
   }
+}
+
+function createHashSignature(infoHash) {
+  return infoHash.reduce((signature, byte) => signature += ("00" + byte.toString(16)).substr(-2), '');
 }
 
 function isMagnetLink(uri) {
@@ -52,4 +62,15 @@ function getTorrentSize(torrent) {
     size = torrent.info.length;
   }
   return size;
+}
+
+let UNIT_LIST = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+
+function getSizeAsString(size) {
+  let unitIndex = 0;
+  while (size >= 1000 && unitIndex < UNIT_LIST.length) {
+    size = size/1024;
+    unitIndex++;
+  }
+  return size.toFixed(2) + ' ' + UNIT_LIST[unitIndex];
 }

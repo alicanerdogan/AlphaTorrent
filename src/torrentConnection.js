@@ -34,6 +34,7 @@ export default class TorrentConnection extends EventEmitter {
     this.options.encodedInfoHash = urlEncodeBuffer(torrent.infoHash);
     this.pieces = new Pieces(torrent.size, torrent.pieceSize);
     this.pieces.once('completed', () => {
+      saveFilesToDisk(this.torrent, this.pieces);
       this.emit('downloaded');
     });
     const tasks = createTasks(torrent, this.pieces);
@@ -121,4 +122,20 @@ function getPeers(trackers, options) {
   return Promise.all(fetchingPeerPromises).then(() => {
     return peers;
   });
+}
+
+function saveFilesToDisk(torrent, pieces) {
+  const files = torrent.torrentInfo.info.files;
+  let startIndex = 0;
+  if (files) {
+    for (var i = 0; i < files.length; i++) {
+      var file = files[i];
+      pieces.writeToFile(file.path[0], startIndex, file.length);
+      console.log('written to ' + file.path[0]);
+      startIndex += file.length;
+    }
+  } else {
+    pieces.writeToFile(torrent.torrentInfo.info.name, startIndex, torrent.size);
+    console.log('written to ' + torrent.torrentInfo.info.name);
+  }
 }

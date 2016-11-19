@@ -10,8 +10,11 @@ process.on('warning', (warning) => {
   console.warn(warning.stack);
 });
 
-const torrentPath = './src/FileOperations/test/ubuntu.torrent';
+const configuration = {
+  tmpDir: 'C:\\Users\\Alican\\Desktop\\TMP'
+}
+const torrentPath = './src/FileOperations/test/hp.torrent';
 const torrent = new Torrent(torrentPath);
-const torrentConnection = new TorrentConnection(torrent);
+const torrentConnection = new TorrentConnection(torrent, configuration);
 
 torrentConnection.start();

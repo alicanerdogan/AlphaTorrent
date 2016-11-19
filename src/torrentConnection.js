@@ -7,6 +7,8 @@ import Peer from './Connection/peer';
 import getPeerAddresses from './Connection/getPeerAddresses';
 import urlEncodeBuffer from './Hashing/urlEncodeBuffer';
 import url from 'url';
+import fs from 'fs';
+import path from 'path';
 
 const STATES = {
   ACTIVE: 0,
@@ -25,8 +27,10 @@ const CONNECTION_OPTIONS = {
 };
 
 export default class TorrentConnection extends EventEmitter {
-  constructor(torrent) {
+  constructor(torrent, configuration) {
     super();
+    this.ongoingDiskOperation = 0;
+    this.configuration = configuration;
     this.options = CONNECTION_OPTIONS;
     this.state = STATES.PAUSED;
     this.torrent = torrent;
@@ -34,13 +38,28 @@ export default class TorrentConnection extends EventEmitter {
     this.options.encodedInfoHash = urlEncodeBuffer(torrent.infoHash);
     this.pieces = new Pieces(torrent.size, torrent.pieceSize);
     this.pieces.once('completed', () => {
-      saveFilesToDisk(this.torrent, this.pieces);
+      var interval = setInterval(() => {
+        if(this.ongoingDiskOperation === 0) {
+          saveFilesToDisk(this.torrent, this.pieces, this.configuration.torrentTmpDir);
+          clearInterval(interval);
+        }
+      }, 100);
       this.emit('downloaded');
     });
     const tasks = createTasks(torrent, this.pieces);
     tasks.forEach((task) => {
       task.once('completed', () => {
         this.pieces.add(task.piece);
+        this.ongoingDiskOperation++;
+        savePieceToDisk(task.piece, this.configuration.torrentTmpDir, (err) => {
+          this.ongoingDiskOperation--;
+          if(err) {
+            console.log(`piece #{piece.index} cannot be saved: #{err}`);
+          }
+          else {
+            task.piece.release();
+          }
+        });
       });
     });
     this.taskAgency = new TaskAgency(tasks, this.torrent.infoHash, this.options.peerId);
@@ -66,10 +85,26 @@ export default class TorrentConnection extends EventEmitter {
     });
   }
 
+  createTmpDir() {
+    let tmpDir = process.cwd();
+    if(this.configuration.tmpDir) {
+      try {
+        fs.accessSync(tmpDir);
+        tmpDir = this.configuration.tmpDir;
+      }
+      catch(error) {
+        console.log(`tmpDir does not exist: #{this.configuraiton.tmpDir}`, 'using cwd...')
+      }
+    }
+    this.configuration.torrentTmpDir = path.join(tmpDir, this.torrent.hashSignature);
+    fs.mkdirSync(this.configuration.torrentTmpDir);
+  }
+
   start() {
     if (this.state !== STATES.ACTIVE) {
       this.state = STATES.ACTIVE;
 
+      this.createTmpDir();
       this.refreshPeers = setInterval(() => this.getPeersFromTrackers(), 600000);
       this.getPeersFromTrackers();      
     }
@@ -124,18 +159,70 @@ function getPeers(trackers, options) {
   });
 }
 
-function saveFilesToDisk(torrent, pieces) {
+function saveFilesToDisk(torrent, pieces, torrentTmpDir) {
   const files = torrent.torrentInfo.info.files;
   let startIndex = 0;
   if (files) {
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
-      pieces.writeToFile(file.path[0], startIndex, file.length);
+      writeToFile(file.path[0], startIndex, file.length, pieces.pieces, torrent.pieceSize, torrentTmpDir);
       console.log('written to ' + file.path[0]);
       startIndex += file.length;
     }
   } else {
-    pieces.writeToFile(torrent.torrentInfo.info.name, startIndex, torrent.size);
+    writeToFile(torrent.torrentInfo.info.name, startIndex, torrent.size, pieces.pieces, torrent.pieceSize, torrentTmpDir);
     console.log('written to ' + torrent.torrentInfo.info.name);
   }
+}
+
+function writeToFile(filename, startIndex, length, pieces, pieceSize, torrentTmpDir) {
+  const fileStream = fs.createWriteStream(filename);
+
+  const startPiece = Math.floor(startIndex / pieceSize);
+  const endPiece = Math.floor((startIndex + length) / pieceSize);
+  let remaining = length;
+  startIndex = startIndex % pieceSize;
+  fileStream.write(getPieceData(pieces[startPiece], torrentTmpDir).slice(startIndex));
+  if (remaining < pieceSize) {
+    remaining = 0;
+  } else {
+    remaining -= (pieceSize - startIndex);
+  }
+  for (var i = startPiece + 1; i <= endPiece; i++) {
+    if (remaining < pieceSize) {
+      fileStream.write(getPieceData(pieces[i], torrentTmpDir), remaining);
+      remaining = 0;
+      break;
+    }
+    else {
+      fileStream.write(getPieceData(pieces[i], torrentTmpDir));
+      remaining -= pieceSize;
+    }
+  }
+  fileStream.end();
+  if (remaining !== 0) {
+    throw new Error('Incomplete file');
+  }
+}
+
+function getPieceData(piece, torrentTmpDir) {
+  setPieceDataFromFile(piece, torrentTmpDir);
+  if(!piece.isIntact()) {
+    throw 'Invalid piece #{piece.index} data';
+  }
+  return piece.buffer;
+}
+
+function setPieceDataFromFile(piece, torrentTmpDir) {
+  piece.buffer = readPieceFromFile(piece.index, torrentTmpDir);
+}
+
+function readPieceFromFile(pieceIndex, torrentTmpDir) {
+  let filename = path.join(torrentTmpDir, pieceIndex.toString());
+  return fs.readFileSync(filename);
+}
+
+function savePieceToDisk(piece, destination, callback) {
+  let filename = path.join(destination, piece.index.toString());
+  fs.writeFile(filename, piece.buffer, null, callback);
 }

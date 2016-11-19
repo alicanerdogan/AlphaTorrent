@@ -19,4 +19,8 @@ export default class Piece {
     hash.update(this.buffer);
     return this.hash.equals(hash.digest());
   }
+
+  release() {
+    this.buffer = null;
+  }
 }

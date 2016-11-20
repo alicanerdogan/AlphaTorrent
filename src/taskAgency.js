@@ -1,8 +1,11 @@
+import EventEmitter from 'events';
+
 const MAX_ACTIVE_PEER_COUNT = 30;
 const RESURRECT_IN_MS = 30000;
 
-export default class TaskAgency {
+export default class TaskAgency extends EventEmitter {
   constructor(tasks, infohash, clientId) {
+    super();
     if(!Array.isArray(tasks) || tasks.length <= 0) {
       throw new Error('Invalid argument: tasks');
     }
@@ -45,8 +48,6 @@ export default class TaskAgency {
 
   registerPeer(peer) {
     if (!this.registeredPeers[peer.getSignature()]) {
-      this.sendPeerToLimbo(peer);
-
       peer.on('choked', () => this.sendPeerToLimbo(peer));
       peer.on('unchoked', () => this.assignPeerToTask(peer));
       peer.on('disconnected', () => this.sendPeerToDead(peer));
@@ -56,9 +57,9 @@ export default class TaskAgency {
   }
 
   establishPeerConnection(peer) {
+    this.sendPeerToLimbo(peer);
     peer.connectAndHandshake(this.infohash, this.clientId).then(() => {
       this.callPeerFromLimbo(peer);
-      // assign task
     }).catch((error) => {
       this.sendPeerToDead(peer);
     });
@@ -69,6 +70,9 @@ export default class TaskAgency {
     if(this.tasks.length > 0) {
       let task = this.tasks.pop();
       task.assignTo(peer);
+    }
+    else {
+      this.emit('completed');
     }
   }
 

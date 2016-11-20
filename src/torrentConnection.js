@@ -210,7 +210,9 @@ function getPieceData(piece, torrentTmpDir) {
   if(!piece.isIntact()) {
     throw 'Invalid piece #{piece.index} data';
   }
-  return piece.buffer;
+  let pieceData = piece.buffer;
+  piece.release();
+  return pieceData;
 }
 
 function setPieceDataFromFile(piece, torrentTmpDir) {

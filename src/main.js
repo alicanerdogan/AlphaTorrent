@@ -13,7 +13,7 @@ process.on('warning', (warning) => {
 const configuration = {
   tmpDir: 'C:\\Users\\Alican\\Desktop\\TMP'
 }
-const torrentPath = './src/FileOperations/test/hp.torrent';
+const torrentPath = './src/FileOperations/test/ubuntu.torrent';
 const torrent = new Torrent(torrentPath);
 const torrentConnection = new TorrentConnection(torrent, configuration);
 

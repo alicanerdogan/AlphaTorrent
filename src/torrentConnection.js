@@ -37,15 +37,6 @@ export default class TorrentConnection extends EventEmitter {
     this.options.infoHash = torrent.infoHash;
     this.options.encodedInfoHash = urlEncodeBuffer(torrent.infoHash);
     this.pieces = new Pieces(torrent.size, torrent.pieceSize);
-    this.pieces.once('completed', () => {
-      var interval = setInterval(() => {
-        if(this.ongoingDiskOperation === 0) {
-          saveFilesToDisk(this.torrent, this.pieces, this.configuration.torrentTmpDir);
-          clearInterval(interval);
-        }
-      }, 100);
-      this.emit('downloaded');
-    });
     const tasks = createTasks(torrent, this.pieces);
     tasks.forEach((task) => {
       task.once('completed', () => {
@@ -63,6 +54,15 @@ export default class TorrentConnection extends EventEmitter {
       });
     });
     this.taskAgency = new TaskAgency(tasks, this.torrent.infoHash, this.options.peerId);
+    this.taskAgency.once('completed', () => {
+      var interval = setInterval(() => {
+        if(this.ongoingDiskOperation === 0) {
+          saveFilesToDisk(this.torrent, this.pieces, this.configuration.torrentTmpDir);
+          clearInterval(interval);
+        }
+      }, 100);
+      this.emit('downloaded');
+    });
   }
 
   getPeersFromTrackers() {

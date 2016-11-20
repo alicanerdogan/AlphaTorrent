@@ -11,6 +11,7 @@ export default class TaskAgency extends EventEmitter {
     }
 
     this.tasks = tasks.slice();
+    this.tasksToBeCompleted = this.tasks.length;
     this.infohash = infohash;
     this.clientId = clientId;
 
@@ -42,7 +43,15 @@ export default class TaskAgency extends EventEmitter {
   subscribeTaskEvents() {
     this.tasks.forEach((task) => {
       task.on('suspended', () => this.tasks.push(task));
-      task.on('completed', () => this.assignPeerToTask(task.peer));
+      task.on('completed', () => {
+        this.tasksToBeCompleted--;
+        if(this.tasksToBeCompleted !== 0) {
+          this.assignPeerToTask(task.peer);
+        }
+        else {
+          this.emit('completed');
+        }
+      });
     });
   }
 
@@ -70,9 +79,6 @@ export default class TaskAgency extends EventEmitter {
     if(this.tasks.length > 0) {
       let task = this.tasks.pop();
       task.assignTo(peer);
-    }
-    else {
-      this.emit('completed');
     }
   }
 

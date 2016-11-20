@@ -1,5 +1,4 @@
 import EventEmitter from 'events';
-import Pieces from './DataStructures/pieces';
 import Piece from './DataStructures/piece';
 import TaskAgency from './taskAgency';
 import Task from './task';
@@ -36,11 +35,11 @@ export default class TorrentConnection extends EventEmitter {
     this.torrent = torrent;
     this.options.infoHash = torrent.infoHash;
     this.options.encodedInfoHash = urlEncodeBuffer(torrent.infoHash);
-    this.pieces = new Pieces(torrent.size, torrent.pieceSize);
-    const tasks = createTasks(torrent, this.pieces);
+    this.completedPieces = {};
+    const tasks = createTasks(torrent);
     tasks.forEach((task) => {
       task.once('completed', () => {
-        this.pieces.add(task.piece);
+        this.completedPieces[task.piece.index] = task.piece;
         this.ongoingDiskOperation++;
         savePieceToDisk(task.piece, this.configuration.torrentTmpDir, (err) => {
           this.ongoingDiskOperation--;
@@ -57,7 +56,7 @@ export default class TorrentConnection extends EventEmitter {
     this.taskAgency.once('completed', () => {
       var interval = setInterval(() => {
         if(this.ongoingDiskOperation === 0) {
-          saveFilesToDisk(this.torrent, this.pieces, this.configuration.torrentTmpDir);
+          saveFilesToDisk(this.torrent, this.completedPieces, this.configuration.torrentTmpDir);
           clearInterval(interval);
         }
       }, 100);
@@ -123,10 +122,10 @@ export default class TorrentConnection extends EventEmitter {
   }
 }
 
-function createTasks(torrent, pieces) {
+function createTasks(torrent) {
   let tasks = [];
   let remainingSize = torrent.size;
-  for (let i = 0; i < pieces.pieceCount; i++) {
+  for (let i = 0; i < torrent.pieceCount; i++) {
     let currentPieceSize = torrent.pieceSize;
     if (remainingSize < torrent.pieceSize) {
       currentPieceSize = remainingSize;
@@ -165,12 +164,12 @@ function saveFilesToDisk(torrent, pieces, torrentTmpDir) {
   if (files) {
     for (var i = 0; i < files.length; i++) {
       var file = files[i];
-      writeToFile(file.path[0], startIndex, file.length, pieces.pieces, torrent.pieceSize, torrentTmpDir);
+      writeToFile(file.path[0], startIndex, file.length, pieces, torrent.pieceSize, torrentTmpDir);
       console.log('written to ' + file.path[0]);
       startIndex += file.length;
     }
   } else {
-    writeToFile(torrent.torrentInfo.info.name, startIndex, torrent.size, pieces.pieces, torrent.pieceSize, torrentTmpDir);
+    writeToFile(torrent.torrentInfo.info.name, startIndex, torrent.size, pieces, torrent.pieceSize, torrentTmpDir);
     console.log('written to ' + torrent.torrentInfo.info.name);
   }
 }

@@ -14,6 +14,7 @@ export default class Torrent {
     this.pieceSize = this.torrentInfo.info['piece length'];
     this.trackers = getTrackers(this.torrentInfo);
     this.size = getTorrentSize(this.torrentInfo);
+    this.pieceCount = Math.ceil(parseFloat(this.size)/this.pieceSize);
     this.sizeAsString = getSizeAsString(this.size);
     this.name = this.torrentInfo.info.name;
     this.files = this.torrentInfo.info.files ? 
